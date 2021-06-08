@@ -7,6 +7,7 @@ const priceInput = document.querySelector('.product-price')
 const addBtn = document.querySelector('.add-product')
 const deleteBtn = document.querySelector('.delete-product')
 const msg = document.querySelector('.msg');
+const formElm = document.querySelector('form')
 
 //data /state
 
@@ -47,7 +48,7 @@ function deleteItemFromLocalStorage(id){
 
 function loadEventListener(){
     addBtn.addEventListener('click', addItem);
-    productListUl.addEventListener('click', deleteProduct)
+    productListUl.addEventListener('click', modifyOrDeleteItem)
     filterInput.addEventListener('keyup', filterProduct)
 
     window.addEventListener('DOMContentLoaded',getData.bind((null,productData)))
@@ -65,7 +66,10 @@ function getData(productList){
             li.id = `product-${id}`
             li.innerHTML = `<strong>${name}</strong>
             <span class="price">${price}</span>
-            <i class="fa fa-trash float-right delete-product"></i>`;
+            <div class="float-right">
+            <i class="fa fa-pencil edit-product"></i>
+            <i class="fa fa-trash  delete-product"></i>
+            </div>`;
             productListUl.appendChild(li)
         });
     } else {
@@ -97,8 +101,8 @@ const addItem = e => {
     } else {
         id = productData[productData.length - 1].id +1;
     }
-
-    if(name === '' || price === '' || !(!isNaN(parseFloat(price)) && isFinite(price))){
+    const inputIsInValid = InputAndValidate(name,price)
+    if(inputIsInValid){
         alert('please fill Up The Information')
     } else {
         const data = {
@@ -118,17 +122,22 @@ const addItem = e => {
 
 
 
+function InputAndValidate(name,price){
+    return name === '' || price === '' || !(!isNaN(parseFloat(price)) && isFinite(price))
+}
 
+function findProductById(id){
+    return productData.find(productItem => productItem.id === id)
+}
 
 //delete item
-const deleteProduct = e => {
+const modifyOrDeleteItem = e => {
+    const target = e.target.parentElement.parentElement;
+    const id = parseInt(target.id.split('-')[1]);
     if(e.target.classList.contains('delete-product')){
         //e.target.parentElement.remove();
-        const target = e.target.parentElement;
-        e.target.parentElement.parentElement.removeChild(target);
+        e.target.parentElement.parentElement.parentElement.removeChild(target);
         //console.log('you want to delete the item')
-
-        const id = parseInt(target.id.split('-')[1]);
         deleteItemFromLocalStorage(id);
         //console.log(id)
         const result = productData.filter((product) => {
@@ -137,6 +146,61 @@ const deleteProduct = e => {
         //console.log(result)
 
         productData = result;
+    } else if(e.target.classList.contains('edit-product')){
+        
+        const foundProduct = findProductById(id)
+        console.log(foundProduct)
+        if(!foundProduct){
+            alert('Invalid Data')
+        } else {
+            nameInput.value = foundProduct.name
+            priceInput.value = foundProduct.price
+            //hide add button
+            addBtn.style.display = 'none'
+
+            //create update button
+            const updateButtonElm = `<button type='submit' class='btn btn-info update-product btn-block'>Update</button>`
+            formElm.insertAdjacentHTML('beforeend',updateButtonElm)
+            //add event listener to update btn get the input
+            
+            const updateBtnElm = document.querySelector('.update-product')
+            updateBtnElm.addEventListener('click',(e) => {
+                e.preventDefault()
+                //validate the input
+                
+                const inputIsInValid = InputAndValidate(nameInput.value,priceInput.value)
+                if(inputIsInValid){
+                    alert('input is not valid')
+                } else {
+                    //add data to data source
+                    productData = productData.map((productItem) => {
+                        if(productItem.id === id){
+                            return {
+                                ...productItem,
+                                name : nameInput.value,
+                                price : priceInput.value
+                            }} else {
+                                return productItem
+                            }
+                    })
+                    //add data to UI
+                    getData(productData)
+                    //change data to ui
+
+                    nameInput.value = '' 
+                    priceInput.value = ''
+                    updateBtnElm.style.display = 'none'
+                    addBtn.style.display = 'block'
+                    //add update to localStorage
+                    localStorage.setItem('productItems',JSON.stringify(productData))
+
+                    productListUl.innerHTML = '';
+
+                }
+            })
+
+
+        }
     }
     //console.log(e.target)
 }
